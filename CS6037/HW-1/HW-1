@@ -1,0 +1,209 @@
+from ucimlrepo import fetch_ucirepo 
+from sklearn.model_selection import train_test_split
+import numpy as np
+from sklearn.preprocessing import StandardScaler
+  
+# fetch dataset 
+wine = fetch_ucirepo(id=186) 
+
+# features x and target y
+X = wine.data.features
+y = wine.data.targets.values.reshape(-1,1)
+
+# Train(70%) Temp(30% for 15% validation & 15% test)
+X_train, X_temp, y_train, y_temp = train_test_split(X,y,test_size=.3, random_state=42, shuffle=True)
+X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5,random_state=42,shuffle=True)
+
+# Scale features
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_val_scaled   = scaler.transform(X_val)
+X_test_scaled  = scaler.transform(X_test)
+
+#Add bias
+Xtrain = np.c_[np.ones((X_train_scaled.shape[0],1)), X_train_scaled]
+Xvalid = np.c_[np.ones((X_val_scaled.shape[0],1)), X_val_scaled]
+Xtest  = np.c_[np.ones((X_test_scaled.shape[0],1)), X_test_scaled]
+
+# Save ground truth
+Ytrain = y_train
+Yvalid = y_val
+Ytest  = y_test
+
+#Batch Gradient Descent 
+
+def compute_y_hat(X, w):
+    return X @ w
+
+def compute_mse(X, Y, w):
+    Y_hat = compute_y_hat(X, w)
+    return np.mean((Y-Y_hat)** 2)
+
+
+def batch_gradient_descent(X,y,learning_rate=0.01, iterations=10000, tolerance=1e-6):
+    # Initialize params
+    m, n = X.shape
+    # Initialize small random weights
+    w = np.random.rand(n,1)
+
+    cost_history = []
+
+    for i in range(iterations):
+        #compute gradient
+        gradients = (2/m) * X.T @ (X @ w - y)
+        #update weight
+        w = w - learning_rate * gradients
+        #compute mse 
+        mse = compute_mse(X, y, w)
+        cost_history.append(mse)
+        #check convergence
+        if mse < tolerance:
+            print(f"Converged at iter {i}")
+            break
+
+    return w, cost_history
+
+def l2_batch_gradient_descent(X,y,alpha,learning_rate=0.01, iterations=1000, tolerance=1e-6):
+    # Initialize params
+    m, n = X.shape
+    # Initialize small random weights
+    w = np.random.rand(n,1)
+
+    cost_history = []
+
+    for i in range(iterations):
+        #compute gradient
+        gradients = (2/m) * X.T @ (X @ w - y) + 2 * alpha * w
+        #update weight
+        w = w - learning_rate * gradients
+        #compute mse 
+        mse = compute_mse(X, y, w)
+        cost_history.append(mse)
+        #check convergence
+        if mse < tolerance:
+            print(f"Converged at iter {i}")
+            break
+
+    return w, cost_history
+
+def l1_batch_gradient_descent(X,y, alpha, learning_rate=0.01, iterations=10000, tolerance=1e-6):
+    # Initialize params
+    m, n = X.shape
+    # Initialize small random weights
+    w = np.random.rand(n,1)
+
+    cost_history = []
+
+    for i in range(iterations):
+        #compute gradient
+        gradients = (2/m) * X.T @ (X @ w - y) + 2 * alpha * np.sign(w)
+        #update weight
+        w = w - learning_rate * gradients
+        #compute mse 
+        mse = compute_mse(X, y, w)
+        cost_history.append(mse)
+        #check convergence
+        if mse < tolerance:
+            print(f"Converged at iter {i}")
+            break
+
+    return w, cost_history
+
+def mini_batch_gradient_descent(X,y,learning_rate=0.01, iterations=10000, batch_size = 32, tolerance=1e-6):
+    # Initialize params
+    m, n = X.shape
+    # Initialize small random weights
+    w = np.random.rand(n,1)
+
+    cost_history = []
+
+    for i in range(iterations):
+        #shuffle the data
+        mix = np.random.permutation(m)
+        X_shuffled = X[mix]
+        y_shuffled = y[mix]
+        
+        for i in range(0,m,batch_size):
+            X_batch = X_shuffled[i:i+batch_size]
+            y_batch = y_shuffled[i:i+batch_size]
+            #compute gradient
+            gradients = (2/ X_batch.shape[0]) * X_batch.T @ (X_batch @ w - y_batch)
+            #update weight
+            w = w - learning_rate * gradients
+        #compute mse 
+        mse = compute_mse(X, y, w)
+        cost_history.append(mse)
+        #check convergence
+        if mse < tolerance:
+            print(f"Converged at iter {i}")
+            break
+
+    return w, cost_history
+
+def l2_mini_batch_gradient_descent(X,y,alpha, learning_rate=0.01, iterations=10000, batch_size = 32, tolerance=1e-6):
+    # Initialize params
+    m, n = X.shape
+    # Initialize small random weights
+    w = np.random.rand(n,1)
+
+    cost_history = []
+
+    for i in range(iterations):
+        #shuffle the data
+        mix = np.random.permutation(m)
+        X_shuffled = X[mix]
+        y_shuffled = y[mix]
+        
+        for i in range(0,m,batch_size):
+            X_batch = X_shuffled[i:i+batch_size]
+            y_batch = y_shuffled[i:i+batch_size]
+            #compute gradient
+            gradients = (2/ X_batch.shape[0]) * X_batch.T @ (X_batch @ w - y_batch) + 2 * alpha * w
+            #update weight
+            w = w - learning_rate * gradients
+        #compute mse 
+        mse = compute_mse(X, y, w)
+        cost_history.append(mse)
+        #check convergence
+        if mse < tolerance:
+            print(f"Converged at iter {i}")
+            break
+
+    return w, cost_history
+
+def mini_batch_gradient_descent(X,y,alpha, learning_rate=0.01, iterations=10000, batch_size = 32, tolerance=1e-6):
+    # Initialize params
+    m, n = X.shape
+    # Initialize small random weights
+    w = np.random.rand(n,1)
+
+    cost_history = []
+
+    for i in range(iterations):
+        #shuffle the data
+        mix = np.random.permutation(m)
+        X_shuffled = X[mix]
+        y_shuffled = y[mix]
+        
+        for i in range(0,m,batch_size):
+            X_batch = X_shuffled[i:i+batch_size]
+            y_batch = y_shuffled[i:i+batch_size]
+            #compute gradient
+            gradients = (2/ X_batch.shape[0]) * X_batch.T @ (X_batch @ w - y_batch) + alpha * np.sign(w)
+            #update weight
+            w = w - learning_rate * gradients
+        #compute mse 
+        mse = compute_mse(X, y, w)
+        cost_history.append(mse)
+        #check convergence
+        if mse < tolerance:
+            print(f"Converged at iter {i}")
+            break
+
+    return w, cost_history
+
+# Train model
+w_final, cost_history = batch_gradient_descent(Xtrain, Ytrain)
+# Compute training predictions
+Yhat_train = compute_y_hat(Xtrain, w_final)
+print("Final training MSE:", compute_mse(Xtrain, Ytrain, w_final))
